@@ -18,7 +18,7 @@ float bed_level[ACCURATE_BED_LEVELING_POINTS][ACCURATE_BED_LEVELING_POINTS];
 static void do_blocking_move_to(float x, float y, float z);
 static void print_bed_level();
 
-static void retract_z_probe() {
+void retract_z_probe() {
     // Retract Z Servo endstop if enabled
     #ifdef SERVO_ENDSTOPS
     if (servo_endstops[Z_AXIS] > -1) {

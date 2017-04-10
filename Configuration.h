@@ -57,7 +57,7 @@
 #endif
 
 
-#define CUSTOM_MENDEL_NAME "UM v2.4.4"
+#define CUSTOM_MENDEL_NAME "UM v2.5"
 
 // Define this to set a custom name for your generic Mendel,
 // #define CUSTOM_MENDEL_NAME "This Mendel"
