@@ -243,8 +243,9 @@ int EtoPPressure=0;
 float delta[3] = {0.0, 0.0, 0.0};
 #endif
 
-static float feedrate = 1500.0, next_feedrate, saved_feedrate;
-static float destination[NUM_AXIS] = {  0.0, 0.0, 0.0, 0.0};
+float feedrate = 1500.0, next_feedrate, saved_feedrate;
+float destination[NUM_AXIS] = {  0.0, 0.0, 0.0, 0.0};
+const char axis_codes[NUM_AXIS] = {'X', 'Y', 'Z', 'E'};
 
 //===========================================================================
 //=============================private variables=============================

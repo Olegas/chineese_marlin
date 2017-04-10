@@ -169,9 +169,9 @@ void manage_inactivity();
 
 enum AxisEnum {X_AXIS=0, Y_AXIS=1, Z_AXIS=2, E_AXIS=3};
 // Added 4 calibration.h
-const char axis_codes[NUM_AXIS] = {'X', 'Y', 'Z', 'E'};
-static float destination[NUM_AXIS] = {  0.0, 0.0, 0.0, 0.0};
-int saved_feedmultiply;
+extern const char axis_codes[NUM_AXIS];
+extern float destination[NUM_AXIS];
+extern int saved_feedmultiply;
 
 
 void FlushSerialRequestResend();
@@ -251,6 +251,6 @@ extern void digipot_i2c_init();
 // Added 4 calibration.h
 float code_value();
 bool code_seen(char code);
-static float feedrate, next_feedrate, saved_feedrate;
+extern float feedrate, next_feedrate, saved_feedrate;
 
 #endif

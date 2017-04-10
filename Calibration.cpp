@@ -10,6 +10,11 @@
 #include "qr_solve.h"
 #endif
 
+#ifdef NONLINEAR_BED_LEVELING
+float bed_level[ACCURATE_BED_LEVELING_POINTS][ACCURATE_BED_LEVELING_POINTS];
+#endif
+
+
 static void do_blocking_move_to(float x, float y, float z);
 static void print_bed_level();
 
@@ -177,7 +182,7 @@ static void extrapolate_unprobed_bed_level() {
 }
 #endif //NONLINEAR_BED_LEVELING
 
-static void init_calibration() {
+void init_calibration() {
     #if Z_MIN_PIN == -1
     #error "You must have a Z_MIN endstop in order to enable Auto Bed Leveling feature!!! Z_MIN_PIN must point to a valid hardware pin."
     #endif
@@ -206,7 +211,7 @@ static void init_calibration() {
     feedrate = homing_feedrate[Z_AXIS];
 }
 
-static void finish_calibration() {
+void finish_calibration() {
     st_synchronize();
 
     #ifndef SERVO_ENDSTOPS
@@ -229,7 +234,7 @@ static void finish_calibration() {
 }
 
 #ifdef ACCURATE_BED_LEVELING
-static void accurate_bed_leveling() {
+void accurate_bed_leveling() {
     // solve the plane equation ax + by + d = z
     // A is the matrix with rows [x y 1] for all the probed points
     // B is the vector of the Z positions
@@ -312,7 +317,7 @@ static void accurate_bed_leveling() {
     #endif //NONLINEAR_BED_LEVELING
 }
 #else
-static void simple_bed_leveling() {
+void simple_bed_leveling() {
     // prob 1
     float z_at_xLeft_yBack = probe_pt(LEFT_PROBE_BED_POSITION, BACK_PROBE_BED_POSITION, Z_RAISE_BEFORE_PROBING);
 
@@ -328,7 +333,7 @@ static void simple_bed_leveling() {
 }
 #endif
 
-static void run_z_probe() {
+void run_z_probe() {
     plan_bed_level_matrix.set_to_identity();
 
 #ifdef DELTA
@@ -378,7 +383,7 @@ static void run_z_probe() {
 #endif
 }
 
-static void engage_z_probe() {
+void engage_z_probe() {
     // Engage Z Servo endstop if enabled
     #ifdef SERVO_ENDSTOPS
     if (servo_endstops[Z_AXIS] > -1) {
@@ -420,7 +425,7 @@ static void print_bed_level() {
 
 
 // Reset calibration results to zero.
-static void reset_bed_level() {
+void reset_bed_level() {
     //Reset the plane ("erase" all leveling data)  
     plan_bed_level_matrix.set_to_identity();  
 
@@ -459,7 +464,7 @@ static void do_blocking_move_relative(float offset_x, float offset_y, float offs
     do_blocking_move_to(current_position[X_AXIS] + offset_x, current_position[Y_AXIS] + offset_y, current_position[Z_AXIS] + offset_z);
 }
 
-static void setup_for_endstop_move() {
+void setup_for_endstop_move() {
     saved_feedrate = feedrate;
     saved_feedmultiply = feedmultiply;
     feedmultiply = 100;
@@ -470,7 +475,7 @@ static void setup_for_endstop_move() {
     #endif //Delta printers enable endstops only during Z probe down move.
 }
 
-static void clean_up_after_endstop_move() {
+void clean_up_after_endstop_move() {
     #ifdef ENDSTOPS_ONLY_FOR_HOMING
         enable_endstops(false);
     #endif
