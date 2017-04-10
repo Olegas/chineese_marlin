@@ -473,16 +473,19 @@ static void lcd_manual_z_calibration()
 float move_menu_scale;
 static void lcd_move_menu_axis();
 
-static void lcd_move_any(AxisEnum which, const char *hint, menuFunc_t next_menu)
+static void lcd_move_any(AxisEnum which, float min_pos, float max_pos, const char *hint, menuFunc_t next_menu)
 {
     if (encoderPosition != 0)
     {
         refresh_cmd_timeout();
         current_position[which] += float((int)encoderPosition) * move_menu_scale;
-        if (min_software_endstops && current_position[which] < X_MIN_POS)
-            current_position[which] = X_MIN_POS;
-        if (max_software_endstops && current_position[which] > X_MAX_POS)
-            current_position[which] = X_MAX_POS;
+        if (which != E_AXIS)
+        {
+            if (min_software_endstops && current_position[which] < min_pos)
+                current_position[which] = min_pos;
+            if (max_software_endstops && current_position[which] > max_pos)
+                current_position[which] = max_pos;
+        }
         encoderPosition = 0;
         #ifdef DELTA
         calculate_delta(current_position);
@@ -506,6 +509,8 @@ static void lcd_move_any(AxisEnum which, const char *hint, menuFunc_t next_menu)
 
 static void lcd_move_x()
 {
+    lcd_move_any(X_AXIS, X_MIN_POS, X_MAX_POS, PSTR("X"), lcd_move_menu_axis);
+   /* 
     if (encoderPosition != 0)
     {
         refresh_cmd_timeout();
@@ -533,6 +538,7 @@ static void lcd_move_x()
         currentMenu = lcd_move_menu_axis;
         encoderPosition = 0;
     }
+    */
 }
 static void lcd_move_y()
 {

@@ -168,6 +168,10 @@ void manage_inactivity();
 
 
 enum AxisEnum {X_AXIS=0, Y_AXIS=1, Z_AXIS=2, E_AXIS=3};
+// Added 4 calibration.h
+extern const char axis_codes[NUM_AXIS];
+extern float destination[NUM_AXIS];
+extern int saved_feedmultiply;
 
 
 void FlushSerialRequestResend();
@@ -243,5 +247,10 @@ extern uint8_t active_extruder;
 extern void digipot_i2c_set_current( int channel, float current );
 extern void digipot_i2c_init();
 #endif
+
+// Added 4 calibration.h
+float code_value();
+bool code_seen(char code);
+extern float feedrate, next_feedrate, saved_feedrate;
 
 #endif

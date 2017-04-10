@@ -1,0 +1,22 @@
+// Поместите параметры в этот файл, чтобы перезаписать параметры по умолчанию и пользовательские параметры.
+{
+    "arduino.fqbn": "arduino:avr:mega:cpu=atmega2560",
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/bower_components": true,
+        "**/.build": true
+    },
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "**/.build": true
+    },
+    "arduino.serialPort": "/dev/cu.usbserial-AI04HUNO",
+    "arduino.verbose": false,
+    "arduino.partno": "ATmega2560",
+    "arduino.programmer": "wiring",
+    "arduino.uploadOptions": "-D"
+}
