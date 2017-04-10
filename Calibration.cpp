@@ -2,6 +2,7 @@
 #include "Calibration.h"
 #include "stepper.h"
 #include "language.h"
+#include "ultralcd.h"
 
 #ifdef ENABLE_AUTO_BED_LEVELING
 
@@ -14,9 +15,153 @@
 float bed_level[ACCURATE_BED_LEVELING_POINTS][ACCURATE_BED_LEVELING_POINTS];
 #endif
 
+// For async bed leveling
+static double ac_eqnAMatrix[ACCURATE_BED_LEVELING_POINTS*ACCURATE_BED_LEVELING_POINTS*3];
+static double ac_eqnBVector[ACCURATE_BED_LEVELING_POINTS*ACCURATE_BED_LEVELING_POINTS];
+static float ac_z_offset;
+static int ac_probePointCounter;
+static int ac_yCount, ac_xCount;
+static int ac_xStart, ac_xStop, ac_xInc;
+static float ac_yProbe, ac_xProbe;
 
 static void do_blocking_move_to(float x, float y, float z);
 static void print_bed_level();
+static void pick_next_y_row(bool init);
+static void pick_next_x_point(bool init);
+static void extrapolate_unprobed_bed_level();
+static void begin_probe_single_point();
+static void prepare_probe_pt(float, float, float);
+static void finish_probe_pt(float, float, float);
+
+static menuFunc_t ac_menuCallback;
+
+void init_async_calibration(menuFunc_t menuCallback) {
+    SERIAL_PROTOCOL("INIT ASYNC");
+    ac_menuCallback = menuCallback;
+
+    init_calibration();
+
+    #ifdef NONLINEAR_BED_LEVELING
+    ac_z_offset = Z_PROBE_OFFSET_FROM_EXTRUDER;
+    if (code_seen(axis_codes[Z_AXIS])) {
+        ac_z_offset += code_value();
+    }
+    #endif //NONLINEAR_BED_LEVELING
+    
+    ac_probePointCounter = 0;
+    
+    pick_next_y_row(true);
+}
+
+static void finish_async_calibration() {
+    clean_up_after_endstop_move();
+
+    #ifdef NONLINEAR_BED_LEVELING
+    extrapolate_unprobed_bed_level();
+    print_bed_level();
+    #else
+    // solve lsq problem
+    double *plane_equation_coefficients = qr_solve(ACCURATE_BED_LEVELING_POINTS*ACCURATE_BED_LEVELING_POINTS, 3, ac_eqnAMatrix, ac_eqnBVector);
+
+    SERIAL_PROTOCOLPGM("Eqn coefficients: a: ");
+    SERIAL_PROTOCOL(plane_equation_coefficients[0]);
+    SERIAL_PROTOCOLPGM(" b: ");
+    SERIAL_PROTOCOL(plane_equation_coefficients[1]);
+    SERIAL_PROTOCOLPGM(" d: ");
+    SERIAL_PROTOCOLLN(plane_equation_coefficients[2]);
+
+
+    set_bed_level_equation_lsq(plane_equation_coefficients);
+
+    free(plane_equation_coefficients);
+    #endif //NONLINEAR_BED_LEVELING
+
+    finish_calibration();
+}
+
+static void pick_next_y_row(bool init) {
+    SERIAL_PROTOCOLPGM("Going to next y row\n");
+    if (init) {
+        SERIAL_PROTOCOLPGM("Init\n");
+        ac_yCount = 0;
+    } else {
+        ac_yCount++;
+    }
+    if (ac_yCount < ACCURATE_BED_LEVELING_POINTS) {
+        ac_yProbe = FRONT_PROBE_BED_POSITION + ACCURATE_BED_LEVELING_GRID_Y * ac_yCount;
+        if (ac_yCount % 2) {
+            ac_xStart = 0;
+            ac_xStop = ACCURATE_BED_LEVELING_POINTS;
+            ac_xInc = 1;
+        } else {
+            ac_xStart = ACCURATE_BED_LEVELING_POINTS - 1;
+            ac_xStop = -1;
+            ac_xInc = -1;
+        }
+
+        pick_next_x_point(true);    
+    } else {
+        finish_async_calibration();
+    }
+}
+
+static void pick_next_x_point(bool init) {
+    SERIAL_PROTOCOLPGM("Going to next X point\n");
+    if (init) {
+        SERIAL_PROTOCOLPGM("Init\n");
+        ac_xCount = 0;
+    } else {
+        ac_xCount += ac_xInc;
+    }
+    if (ac_xCount != ac_xStop) { 
+        begin_probe_single_point();
+    } else {
+        pick_next_y_row(false);
+    }
+}
+
+static void begin_probe_single_point() {
+    ac_xProbe = LEFT_PROBE_BED_POSITION + ACCURATE_BED_LEVELING_GRID_X * ac_xCount;
+
+    #ifdef DELTA
+    // Avoid probing the corners (outside the round or hexagon print surface) on a delta printer.
+    float distance_from_center = sqrt(ac_xProbe*ac_xProbe + ac_yProbe*ac_yProbe);
+    if (distance_from_center > DELTA_PRINTABLE_RADIUS) {
+        pick_next_x_point(false);
+    }
+    #endif //DELTA
+
+    float z_before = ac_probePointCounter == 0 ? Z_RAISE_BEFORE_PROBING :
+        current_position[Z_AXIS] + Z_RAISE_BETWEEN_PROBINGS;
+
+    prepare_probe_pt(ac_xProbe, ac_yProbe, z_before);
+
+    // FIXME! Can not move to prepare. Or not?
+    plan_bed_level_matrix.set_to_identity();
+
+    SERIAL_PROTOCOLPGM("Going to menu!\n");
+    lcd_change_active_menu(ac_menuCallback);
+}
+
+void continue_leveling() {
+    
+    float measured_z = current_position[Z_AXIS];
+
+    finish_probe_pt(ac_xProbe, ac_yProbe, measured_z);    
+
+    #ifdef NONLINEAR_BED_LEVELING
+    bed_level[ac_xCount][ac_yCount] = measured_z + ac_z_offset;
+    #endif //NONLINEAR_BED_LEVELING
+
+    ac_eqnBVector[ac_probePointCounter] = measured_z;
+
+    ac_eqnAMatrix[ac_probePointCounter + 0*ACCURATE_BED_LEVELING_POINTS*ACCURATE_BED_LEVELING_POINTS] = ac_xProbe;
+    ac_eqnAMatrix[ac_probePointCounter + 1*ACCURATE_BED_LEVELING_POINTS*ACCURATE_BED_LEVELING_POINTS] = ac_yProbe;
+    ac_eqnAMatrix[ac_probePointCounter + 2*ACCURATE_BED_LEVELING_POINTS*ACCURATE_BED_LEVELING_POINTS] = 1;
+    ac_probePointCounter++;
+
+    pick_next_x_point(false);
+}
 
 void retract_z_probe() {
     // Retract Z Servo endstop if enabled
@@ -58,8 +203,7 @@ void retract_z_probe() {
     #endif //SERVO_ENDSTOPS
 }
 
-/// Probe bed height at position (x,y), returns the measured z value
-static float probe_pt(float x, float y, float z_before) {
+static void prepare_probe_pt(float x, float y, float z_before) {
     // move to right place
     do_blocking_move_to(current_position[X_AXIS], current_position[Y_AXIS], z_before);
     do_blocking_move_to(x - X_PROBE_OFFSET_FROM_EXTRUDER, y - Y_PROBE_OFFSET_FROM_EXTRUDER, current_position[Z_AXIS]);
@@ -67,10 +211,9 @@ static float probe_pt(float x, float y, float z_before) {
     #ifdef SERVO_ENDSTOPS
     engage_z_probe();   // Engage Z Servo endstop if available
     #endif //SERVO_ENDSTOPS
+}
 
-    run_z_probe();
-    float measured_z = current_position[Z_AXIS];
-
+static void finish_probe_pt(float x, float y, float z) {
     #ifdef SERVO_ENDSTOPS
     retract_z_probe();
     #endif //SERVO_ENDSTOPS
@@ -81,8 +224,19 @@ static float probe_pt(float x, float y, float z_before) {
     SERIAL_PROTOCOLPGM(" y: ");
     SERIAL_PROTOCOL(y);
     SERIAL_PROTOCOLPGM(" z: ");
-    SERIAL_PROTOCOL(measured_z);
+    SERIAL_PROTOCOL(z);
     SERIAL_PROTOCOLPGM("\n");
+}
+
+/// Probe bed height at position (x,y), returns the measured z value
+static float probe_pt(float x, float y, float z_before) {
+    prepare_probe_pt(x, y, z_before);
+
+    run_z_probe();
+    float measured_z = current_position[Z_AXIS];
+
+    finish_probe_pt(x, y, measured_z);
+    
     return measured_z;
 }
 

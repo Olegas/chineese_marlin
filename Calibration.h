@@ -1,6 +1,8 @@
 #ifndef CALIBRATION_H
 #define CALIBRATION_H
 
+#include "ultralcd.h"
+
 #ifdef NONLINEAR_BED_LEVELING
 extern float bed_level[ACCURATE_BED_LEVELING_POINTS][ACCURATE_BED_LEVELING_POINTS];
 #endif
@@ -15,5 +17,7 @@ void reset_bed_level();
 void retract_z_probe();
 void setup_for_endstop_move();
 void clean_up_after_endstop_move();
+void init_async_calibration(menuFunc_t menu);
+void continue_leveling();
 
 #endif

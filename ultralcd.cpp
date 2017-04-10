@@ -7,6 +7,7 @@
 #include "temperature.h"
 #include "stepper.h"
 #include "ConfigurationStore.h"
+#include "Calibration.h"
 
 int8_t encoderDiff; /* encoderDiff is updated from interrupt context and added to encoderPosition every LCD update */
 
@@ -26,8 +27,6 @@ static float manual_feedrate[] = MANUAL_FEEDRATE;
 
 /* !Configuration settings */
 
-//Function pointer to menu functions.
-typedef void (*menuFunc_t)();
 
 uint8_t lcd_status_message_level;
 char lcd_status_message[LCD_WIDTH+1] = WELCOME_MSG;
@@ -447,7 +446,9 @@ static void lcd_prepare_menu()
     MENU_ITEM(gcode, "Enbl cld xtrusion", PSTR("M302"));
     MENU_ITEM(gcode, MSG_DISABLE_STEPPERS, PSTR("M84"));
     MENU_ITEM(gcode, MSG_AUTO_HOME, PSTR("G28"));
-    MENU_ITEM(function, "Manual Z", lcd_manual_z_calibration);
+    #ifdef ENABLE_AUTO_BED_LEVELING
+    MENU_ITEM(submenu, "Manual Z", lcd_manual_z_calibration);
+    #endif
     MENU_ITEM(gcode, "Beep :)", PSTR("M300"));
     //MENU_ITEM(gcode, MSG_SET_ORIGIN, PSTR("G92 X0 Y0 Z0"));
     MENU_ITEM(function, MSG_PREHEAT_PLA, lcd_preheat_pla);
@@ -465,15 +466,27 @@ static void lcd_prepare_menu()
     END_MENU();
 }
 
+static void lcd_show_current_z();
 static void lcd_manual_z_calibration() 
 {
-    
+    init_async_calibration(lcd_show_current_z);  
+    currentMenu = noop_menu;  
+}
+
+static void noop_menu() {
+    lcd_implementation_drawedit(PSTR("Wait..."), "");
+}
+
+void lcd_change_active_menu(menuFunc_t menu) {
+    lcdDrawUpdate = 2;
+    currentMenu = menu;
+    menu();
 }
 
 float move_menu_scale;
 static void lcd_move_menu_axis();
 
-static void lcd_move_any(AxisEnum which, float min_pos, float max_pos, const char *hint, menuFunc_t next_menu)
+static void lcd_move_any(AxisEnum which, float min_pos, float max_pos, const char *hint, menuFunc_t next_menu, menuFunc_t callback=NULL)
 {
     if (encoderPosition != 0)
     {
@@ -502,10 +515,20 @@ static void lcd_move_any(AxisEnum which, float min_pos, float max_pos, const cha
     if (LCD_CLICKED)
     {
         lcd_quick_feedback();
-        currentMenu = next_menu;
+        if (next_menu) {
+            currentMenu = next_menu;
+        }
+        if (callback) {
+            callback();
+        }
         encoderPosition = 0;
     }
 }
+
+void lcd_show_current_z() {
+    lcd_move_any(Z_AXIS, Z_MIN_POS, Z_MAX_POS, PSTR("Current Z"), NULL, continue_leveling);
+}
+
 
 static void lcd_move_x()
 {
