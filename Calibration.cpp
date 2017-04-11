@@ -80,9 +80,7 @@ static void finish_async_calibration() {
 }
 
 static void pick_next_y_row(bool init) {
-    SERIAL_PROTOCOLPGM("Going to next y row\n");
     if (init) {
-        SERIAL_PROTOCOLPGM("Init\n");
         ac_yCount = 0;
     } else {
         ac_yCount++;
@@ -106,10 +104,8 @@ static void pick_next_y_row(bool init) {
 }
 
 static void pick_next_x_point(bool init) {
-    SERIAL_PROTOCOLPGM("Going to next X point\n");
     if (init) {
-        SERIAL_PROTOCOLPGM("Init\n");
-        ac_xCount = 0;
+        ac_xCount = ac_xStart;
     } else {
         ac_xCount += ac_xInc;
     }
@@ -134,6 +130,12 @@ static void begin_probe_single_point() {
     float z_before = ac_probePointCounter == 0 ? Z_RAISE_BEFORE_PROBING :
         current_position[Z_AXIS] + Z_RAISE_BETWEEN_PROBINGS;
 
+    SERIAL_PROTOCOLPGM("x: ");
+    SERIAL_PROTOCOL(ac_xProbe);
+    SERIAL_PROTOCOLPGM("y: ");
+    SERIAL_PROTOCOL(ac_yProbe);
+    SERIAL_PROTOCOLPGM("z: ");
+    SERIAL_PROTOCOL(z_before);
     prepare_probe_pt(ac_xProbe, ac_yProbe, z_before);
 
     // FIXME! Can not move to prepare. Or not?
@@ -145,6 +147,7 @@ static void begin_probe_single_point() {
 
 void continue_leveling() {
     
+    lcd_show_waitscreen();
     float measured_z = current_position[Z_AXIS];
 
     finish_probe_pt(ac_xProbe, ac_yProbe, measured_z);    

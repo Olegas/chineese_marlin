@@ -352,13 +352,13 @@ const bool Z_MAX_ENDSTOP_INVERTING = false;
 
   #define X_PROBE_OFFSET_FROM_EXTRUDER 0.0
   #define Y_PROBE_OFFSET_FROM_EXTRUDER 0.0
-  #define Z_PROBE_OFFSET_FROM_EXTRUDER 1.0 //Automatic leveling settings,too high reduce,low increases
+  #define Z_PROBE_OFFSET_FROM_EXTRUDER 0.0 //Automatic leveling settings,too high reduce,low increases
 
   #define Z_RAISE_BEFORE_HOMING 4       // Configuration of before homing, Z-axis height raised,the height must be ensured in the range of the maximum height in the Z-axis.
   
   #define XY_TRAVEL_SPEED 2000         //Automatic leveling speed of movement,increasing the speed increase, decrease speed reduction
 
-  #define Z_RAISE_BEFORE_PROBING 80  ////Before the first pre-test point, Z-axis height raised, the height should ensure that the leveling sensors can normally be put down.
+  #define Z_RAISE_BEFORE_PROBING 10  ////Before the first pre-test point, Z-axis height raised, the height should ensure that the leveling sensors can normally be put down.
   #define Z_RAISE_BETWEEN_PROBINGS 5  //The next pre-test point,Z-axis height raised
 
   #define Z_SAFE_HOMING   

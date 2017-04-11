@@ -467,20 +467,27 @@ static void lcd_prepare_menu()
 }
 
 static void lcd_show_current_z();
+static void noop_menu();
 static void lcd_manual_z_calibration() 
 {
-    init_async_calibration(lcd_show_current_z);  
     currentMenu = noop_menu;  
+    init_async_calibration(lcd_show_current_z);  
+}
+
+void lcd_show_waitscreen() {
+    lcd_change_active_menu(noop_menu);
 }
 
 static void noop_menu() {
     lcd_implementation_drawedit(PSTR("Wait..."), "");
+    // simulate update so we not get bailed to status screen
+    // Be careful!
+    lcd_next_update_millis = millis() + LCD_TIMEOUT_TO_STATUS;
 }
 
 void lcd_change_active_menu(menuFunc_t menu) {
     lcdDrawUpdate = 2;
     currentMenu = menu;
-    menu();
 }
 
 float move_menu_scale;
@@ -526,7 +533,9 @@ static void lcd_move_any(AxisEnum which, float min_pos, float max_pos, const cha
 }
 
 void lcd_show_current_z() {
+    move_menu_scale = 0.1;
     lcd_move_any(Z_AXIS, Z_MIN_POS, Z_MAX_POS, PSTR("Current Z"), NULL, continue_leveling);
+    lcd_next_update_millis = millis() + LCD_TIMEOUT_TO_STATUS;
 }
 
 
