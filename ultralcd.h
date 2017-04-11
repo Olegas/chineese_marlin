@@ -16,8 +16,9 @@ typedef void (*menuFunc_t)();
   void lcd_setalertstatuspgm(const char* message);
   void lcd_reset_alert_level();
   // 4 async calibration
-  void lcd_change_active_menu(menuFunc_t menu);
+  void lcd_change_active_menu(menuFunc_t menu, bool defer_escape);
   void lcd_show_waitscreen();
+  void lcd_force_status();
 
 #ifdef DOGLCD
   extern int lcd_contrast;

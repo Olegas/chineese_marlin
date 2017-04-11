@@ -54,6 +54,7 @@ void init_async_calibration(menuFunc_t menuCallback) {
 }
 
 static void finish_async_calibration() {
+    lcd_force_status();
     clean_up_after_endstop_move();
 
     #ifdef NONLINEAR_BED_LEVELING
@@ -142,7 +143,7 @@ static void begin_probe_single_point() {
     plan_bed_level_matrix.set_to_identity();
 
     SERIAL_PROTOCOLPGM("Going to menu!\n");
-    lcd_change_active_menu(ac_menuCallback);
+    lcd_change_active_menu(ac_menuCallback, true);
 }
 
 void continue_leveling() {

@@ -163,6 +163,7 @@ menuFunc_t currentMenu = lcd_status_screen; /* function pointer to the currently
 uint32_t lcd_next_update_millis;
 uint8_t lcd_status_update_delay;
 uint8_t lcdDrawUpdate = 2;                  /* Set to none-zero when the LCD needs to draw, decreased after every draw. Set to 2 in LCD routines so the LCD gets atleast 1 full redraw (first redraw is partial) */
+bool defer_status_menu_escape = false;
 
 //prevMenu and prevEncoderPosition are used to store the previous menu location when editing settings.
 menuFunc_t prevMenu = NULL;
@@ -230,9 +231,17 @@ static void lcd_status_screen()
 #ifdef ULTIPANEL
 static void lcd_return_to_status()
 {
-    encoderPosition = 0;
-    currentMenu = lcd_status_screen;
+    if (!defer_status_menu_escape) {
+        encoderPosition = 0;
+        currentMenu = lcd_status_screen;
+    }
 }
+
+void lcd_force_status() {
+    defer_status_menu_escape = false;
+    lcd_return_to_status();
+}
+
 
 static void lcd_sdcard_pause()
 {
@@ -470,24 +479,22 @@ static void lcd_show_current_z();
 static void noop_menu();
 static void lcd_manual_z_calibration() 
 {
-    currentMenu = noop_menu;  
+    lcd_show_waitscreen();
     init_async_calibration(lcd_show_current_z);  
 }
 
 void lcd_show_waitscreen() {
-    lcd_change_active_menu(noop_menu);
+    lcd_change_active_menu(noop_menu, true);
 }
 
 static void noop_menu() {
     lcd_implementation_drawedit(PSTR("Wait..."), "");
-    // simulate update so we not get bailed to status screen
-    // Be careful!
-    lcd_next_update_millis = millis() + LCD_TIMEOUT_TO_STATUS;
 }
 
-void lcd_change_active_menu(menuFunc_t menu) {
-    lcdDrawUpdate = 2;
+void lcd_change_active_menu(menuFunc_t menu, bool defer_escape = false) {
+    defer_status_menu_escape = defer_escape;
     currentMenu = menu;
+    lcdDrawUpdate = 2;
 }
 
 float move_menu_scale;
@@ -533,9 +540,9 @@ static void lcd_move_any(AxisEnum which, float min_pos, float max_pos, const cha
 }
 
 void lcd_show_current_z() {
+    defer_status_menu_escape = true;
     move_menu_scale = 0.1;
     lcd_move_any(Z_AXIS, Z_MIN_POS, Z_MAX_POS, PSTR("Current Z"), NULL, continue_leveling);
-    lcd_next_update_millis = millis() + LCD_TIMEOUT_TO_STATUS;
 }
 
 
